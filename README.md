@@ -1,4 +1,4 @@
-# Гайд на створення RESTful API мовою Python з використання SQLAlchemy та FastAPI
+# Гайд на створення RESTful API мовою Python з використанням SQLAlchemy та FastAPI
 **Автори:**
 
 *студент 2-го курсу, групи ІМ-32*<span padding-right:5em></span> **Дмитро Кулик** [Telegram](https://t.me/dimakulyk2005)
