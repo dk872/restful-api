@@ -40,7 +40,7 @@
 
 ![](./images/database/7.png)
 
-Нижче ми детально опишемо, як реалізувати RESTful Service для Order, проте в директорії /example/software ви можете знайти програмні коди з реалізацією як для Order, так і для Product. Let`s do it!)
+Нижче ми детально опишемо, як реалізувати RESTful Service для Order, проте в директорії /software ви можете знайти програмні коди з реалізацією як для Order, так і для Product. Let`s do it!)
 
 ## Підключення до бази даних
 ### database.py
@@ -63,7 +63,7 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 ```python
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 ```
-**sessionmaker** створює фабрику сесій, яка дозволяє створювати нові екземпляри сесій для взаємодії з базою даних. *autocommit=False* означає, що автоматичне збереження змін вимкнено. Відповідно всі зміни потрібно зберігати вручну за допомогою session.commit(). *autoflush=False* означає, що автоматичне оновлення кешу вимкнено. Це допомагає уникнути потенційних проблем із несинхронізованими даними. *bind=engine* - прив'язка сесії до об'єкта engine, що забезпечує підключення до бази даних.
+**sessionmaker** створює фабрику сесій, яка дозволяє створювати нові екземпляри сесій для взаємодії з базою даних. ```autocommit=False``` означає, що автоматичне збереження змін вимкнено. Відповідно всі зміни потрібно зберігати вручну за допомогою session.commit(). ```autoflush=False``` означає, що автоматичне оновлення кешу вимкнено. Це допомагає уникнути потенційних проблем із несинхронізованими даними. ```bind=engine``` - прив'язка сесії до об'єкта engine, що забезпечує підключення до бази даних.
 
 ```python
 Base = declarative_base()
@@ -80,16 +80,19 @@ Base = declarative_base()
 ```python
 Base.metadata.create_all(bind=engine)
 ```
-**Base.metadata.create_all()** — це метод SQLAlchemy, який використовується для створення всіх таблиць у базі даних, визначених у моделях; bind=engine визначає, до якої бази даних підключатися для створення таблиць.
+
+**Base.metadata.create_all()** — це метод SQLAlchemy, який використовується для створення всіх таблиць у базі даних, визначених у моделях; ```bind=engine``` визначає, до якої бази даних підключатися для створення таблиць.
 
 ```python
 app = FastAPI()
 ```
+
 **FastAPI()** створює новий екземпляр додатка FastAPI, який є основою для всіх HTTP-запитів та відповідає за обробку маршрутів.
 
 ```python
 app.include_router(router)
 ```
+
 **include_router()** — метод FastAPI, який підключає маршрутизатор (router) до основного додатка; router — це об'єкт, що містить визначені маршрути (endpoints) для обробки HTTP-запитів.
 
 На цьому налаштування доступу до бази даних закінчено. Тепер можемо переходити до створення Pydantic-схеми та моделей SQLAlchemy.
@@ -147,7 +150,7 @@ product = relationship("Product", back_populates="orders")
 
 ![](./images/software/8.png)
 
-Схема **OrderResponse** успадковує всі поля від OrderCreate. *orm_mode = True*  дозволяє використовувати ORM-об'єкти SQLAlchemy. Загалом ця схема використовується для формування відповіді сервера при запиті даних про замовлення (HTTP-запит GET), а також забезпечує серіалізацію об'єктів у JSON.
+Схема **OrderResponse** успадковує всі поля від OrderCreate. ```from_attributes = True```  дозволяє використовувати ORM-об'єкти SQLAlchemy. Загалом ця схема використовується для формування відповіді сервера при запиті даних про замовлення (HTTP-запит GET), а також забезпечує серіалізацію об'єктів у JSON.
 
 ![](./images/software/9.png)
 
@@ -156,10 +159,246 @@ product = relationship("Product", back_populates="orders")
 Аналогічно створюємо схеми для **Product**.
 
 ## Реалізація основних маршрутів API
+Тепер ми перейдемо чи не найважливішої частини роботи. У файлі **routes.py** ми визначимо маршрути для створення, читання, оновлення, видалення та часткового оновлення записів у базі даних, використовуючи ORM SQLAlchemy.
 
-## Тестування API
+![](./images/software/10.png)
+
+**Імпорти**: *APIRouter* використовується для створення групи маршрутів; *Depends* дозволяє використовувати залежності (наприклад, сесію бази даних); *HTTPException* дозволяє піднімати HTTP-помилки; *Session* представляє сесію з базою даних; *List* використовується для типізації списків; *models* - модулі, що містять моделі таблиць (Product, Orders); *schemas* - модулі, що містять схеми запитів і відповідей (ProductCreate, OrderCreate тощо); *SessionLocal* - функція для створення сесії з базою даних.
+
+```python
+router = APIRouter()
+```
+
+Тут ми створюємо об'єкт маршрутизатора (APIRouter), який використовується для визначення та організації HTTP-роутів (endpoint'ів) API.
+
+![](./images/software/11.png)
+
+Ця функція використовується як залежність у FastAPI для забезпечення доступу до сесії бази даних (Session) в API-запитах. *SessionLocal* — це об'єкт, створений за допомогою sessionmaker у SQLAlchemy. Він використовується для створення нової сесії бази даних. Сесія потрібна для виконання операцій **CRUD** (Create, Read, Update, Delete). 
+
+*yield* повертає об'єкт db як генератор, що дозволяє використовувати його у функціях-запитах (endpoints).
+
+Після завершення виконання запиту (незалежно від того, чи був він успішним, чи сталася помилка) сесія закривається. Це допомагає уникнути витоку ресурсів.
+
+Зараз ми опишемо реалізацію маршрутів для **Orders**, а для Product ви вже зможете це зробити самостійно.
+
+### GET
+Get-запит відповідає за отримання даних. У нашому випадку реалізуємо два варіанти: отримання даних всіх замовлень та отримання даних окремого замовлення за id.
+
+![](./images/software/12.png)
+
+Цей ендпоінт реалізує HTTP-запит GET для отримання списку замовлень. ```@router.get("/orders/")``` вказує, що цей ендпоінт буде доступний за URL-адресою /orders/; ```response_model=List[OrderResponse]``` вказує на схему відповіді, яку повинен повертати ендпоінт; ```List[OrderResponse]``` означає, що відповідь буде списком об'єктів, які відповідають схемі ProductResponse; ```db: Session = Depends(get_db)``` - це залежність FastAPI, що забезпечує сесію бази даних (```Depends(get_db)``` викликає функцію get_db(), яка створює сесію бази даних).
+
+Ця функція виконує запит до таблиці Orders через метод *.query()*  і повертає всі записи з таблиці у вигляді списку об'єктів.
+
+![](./images/software/13.png)
+
+Цей ендпоінт використовується для отримання конкретного замовлення за його id. ```response_model=OrderResponse``` вказує, що відповідь буде відповідати схемі ProductResponse. *order_id* - це параметр функції, який отримує значення id продукту з URL.
+
+```python
+db_order = db.query(Orders).filter(order_id == Orders.id).first()
+```
+
+```db.query(Orders)``` виконує запит до таблиці Orders; ```.filter(product_id == Product.id)``` застосовує фільтр, де значення id продукту дорівнює переданому параметру product_id; ```.first()``` - повертає перший знайдений запис або None, якщо запис не знайдено. 
+
+```python
+if db_order is None:
+    raise HTTPException(status_code=404, detail="The order with the specified ID was not found")
+```
+
+Якщо замовлення не знайдено, піднімається виключення HTTPException з кодом помилки 404 та повідомленням.
+
+```python
+return db_order
+```
+
+Повертаємо знайдене замовлення у форматі, що відповідає схемі.
+
+### POST
+Post-запит відповідає за додавання даних.
+
+![](./images/software/14.png)
+
+Ця функція реалізує POST-запит для створення нового замовлення в базі даних. ```order: OrderCreate``` - це параметр функції, що представляє тіло запиту. *OrderCreate* — це схема, яка визначає поля, що очікуються у тілі запиту (наприклад, id, product_id, quantity, тощо). FastAPI автоматично перетворює дані з JSON у відповідний Python-об'єкт (OrderCreate).
+
+```python
+id_order = db.query(Orders).filter(order.id == Orders.id).first()
+if id_order:
+    raise HTTPException(status_code=400, detail="The order with this ID already exists")
+
+id_product = db.query(Product).filter(order.product_id == Product.id).first()
+if not id_product:
+    raise HTTPException(status_code=400, detail="The product with the specified ID was not found")
+```
+
+Тут ми перевіряємо, чи не існує в базі даних замовлення з таким id і чи існує продукт із замовлення в табличці Product. Якщо умови перевірки не виконуються, повертаються помилки з відповідним описом.
+
+```python
+db_order = Orders(**order.dict())
+db.add(db_order)
+db.commit()
+db.refresh(db_order)
+
+return db_order
+```
+
+```order.dict()``` - перетворює об'єкт OrderCreate на словник Python. ```Orders(**order.dict())``` виконує розпакування словника і передає значення як аргументи для створення об'єкта Orders. ```db.add(db_order)``` додає новий об'єкт Orders до сесії. ```db.commit()``` фіксує зміни в базі даних, тобто зберігає новий запис. ```db.refresh(db_order)``` оновлює об'єкт db_order з бази даних, щоб включити новостворене значення id.
+
+### PUT
+Put-запит відповідає за оновлення вже існуючих даних.
+
+![](./images/software/15.png)
+
+Ця функція реалізує PUT-запит для оновлення існуючого замовлення в базі даних.
+
+```python
+db_order = db.query(Orders).filter(order_id == Orders.id).first()
+if db_order is None:
+    raise HTTPException(status_code=404, detail="The order with the specified ID was not found")
+
+id_order = db.query(Orders).filter(order.id == Orders.id, order_id != Orders.id).first()
+if id_order:
+    raise HTTPException(status_code=400, detail="The order with this ID already exists")
+
+id_product = db.query(Product).filter(order.product_id == Product.id).first()
+if not id_product:
+    raise HTTPException(status_code=400, detail="The product with the specified ID was not found")
+```
+
+Тут реалізовано перевірку на існування замовлення з *order_id*; на існування замовлення з таким же id, як у нових даних; на існування продукту з таким *product_id*.
+
+
+```python
+for key, value in order.dict().items():
+    setattr(db_order, key, value)
+```
+
+```order.dict()``` перетворює об'єкт OrderCreate на словник Python, де ключі — це імена атрибутів, а значення — їх нові значення. ```setattr(db_order, key, value)``` використовує функцію *setattr()* для оновлення атрибутів об'єкта db_order. Наприклад, якщо ключ — quantity, то виконується ```db_order.quantity = value```. Цей цикл оновлює всі поля замовлення новими значеннями з тіла запиту.
+
+### DELETE
+Delete-запит відповідає за видалення даних.
+
+![](./images/software/16.png)
+
+Ця функція реалізує DELETE-запит для видалення існуючого замовлення з бази даних за його order_id.
+
+```python
+db_order = db.query(Orders).filter(order_id == Orders.id).first()
+if db_order is None:
+    raise HTTPException(status_code=404, detail="The order with the specified ID was not found")
+```
+
+Перевірка на існування замовлення в Orders.
+
+```python
+db.delete(db_order)
+```
+
+Видаляє об'єкт замовлення з сесії бази даних; це означає, що замовлення буде видалене з бази даних під час наступного виклику ```commit()```.
+
+### PATCH
+Patch-запит відповідає за часткове оновлення вже існуючих даних.
+
+![](./images/software/17.png)
+
+Ця функція реалізує ендпоінт для часткового оновлення замовлення через HTTP-запит PATCH.
+
+```python
+db_order = db.query(Orders).filter(order_id == Orders.id).first()
+if db_order is None:
+    raise HTTPException(status_code=404, detail="The order with the specified ID was not found")
+
+updated_fields = order.dict(exclude_unset=True)
+
+if 'id' in updated_fields and updated_fields['id'] != order_id:
+    id_order = db.query(Orders).filter(Orders.id == updated_fields['id']).first()
+    if id_order:
+        raise HTTPException(status_code=400, detail="The order with this ID already exists")
+
+if 'product_id' in updated_fields:
+    id_product = db.query(Product).filter(Orders.id == updated_fields['product_id']).first()
+    if not id_product:
+        raise HTTPException(status_code=400, detail="The product with the specified ID was not found")
+```
+
+Тут спочатку перевіряється, чи змінено значення id чи product_id, а вже потім перевіряється існування замовлення; перевіряється, чи не ввів користувач новий id, замовлення з яким уже існує в базі; і чи не ввів користувач новий product_id, якого не існує в Product.
+
+```python
+for key, value in updated_fields.items():
+    setattr(db_order, key, value)
+```
+
+```exclude_unset=True``` - цей параметр повертає словник, який містить лише ті поля, які були передані в запиті. Це дозволяє оновлювати лише вказані користувачем поля, а не всі поля замовлення. Цикл проходить по всіх змінених полях і встановлює нові значення для об'єкта замовлення.
+
+Фактично на цьому ми закінчили реалізацію RESTful API для **Orders**. Нижче ви можете побачити, як можна перевірити працездатність сервісу за допомогою **Postman**.
+## Запуск сервера FastAPI і тестування
+### Запуск FastAPI сервера
+Для початку нам треба активувати віртуальне середовище та запустити FastAPI сервер. Переходимо в термінал усередині PyCharm. Якщо ви ще не створили віртуальне середовище проєкту (воно допомагає ізолювати залежності проєкту), зробіть це за допомогою наступної команди:
+
+```
+python -m venv .venv
+```
+
+Тепер нам необхідно активувати віртуальне середовище за допомогою команди:
+
+```
+.venv\Scripts\activate   
+```
+
+І після цього запускаємо сервер FastAPI командою:
+```
+uvicorn main:app --reload  
+```
+
+Якщо ви все зробили правильно, то маєте отримати приблизно таку відповідь:
+
+![](./images/test/1.png)
+### Тестування основного сценарію
+Тестування **GET-запиту** для отримання всіх замовлень:
+
+![](./images/test/2.png)
+
+Тестування **GET-запиту** для отримання замовлення за id:
+
+![](./images/test/3.png)
+
+Тестування **POST-запиту** для додавання замовлення:
+
+![](./images/test/4.png)
+
+*Тут ми не вводили id та дату, і, як бачимо, система самостійно згенерувала id та встановила поточний час у замовленні.*
+
+Тестування **PUT-запиту** на оновлення замовлення:
+
+![](./images/test/5.png)
+
+Тестування **DELETE-запиту** на видалення замовлення:
+
+![](./images/test/6.png)
+
+Тестування **PATCH-запиту** на часткове оновлення замовлення:
+
+![](./images/test/7.png)
+
+### Тестування виключних ситуацій
+Для різних запитів виключні ситуації повторюються, тому ми наведемо приклад лише для основних із них
+
+Тестування **GET-запиту** для отримання неіснуючого замовлення:
+
+![](./images/test/8.png)
+
+Тестування **POST-запиту** для додавання замовлення з неіснуючим товаром:
+
+![](./images/test/9.png)
+
+Тестування **DELETE-запиту** на видалення неіснуючого замовлення:
+
+![](./images/test/10.png)
 
 ## Висновки
+Використання FastAPI та SQLAlchemy забезпечує високопродуктивне рішення для створення RESTful API, яке легко масштабувати, розширювати та підтримувати. Цей стек технологій є чудовим вибором як для невеликих проєктів, так і для великих систем завдяки його гнучкості, продуктивності та зручності розробки.
 
+У цьому гайді ми намагалися максимально зрозуміло та детально пояснити, як створити RESTful API мовою Python. Сподіваємося, що цей матеріал став для вас справді корисним і допоміг розібратися в основних моментах розробки.
+
+P.S. Ще раз нагадуємо, що всі коди та файл бази даних ви можете знайти в директорії /software цього репозиторію.
 ## Посилання
 
