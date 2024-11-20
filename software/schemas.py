@@ -3,6 +3,15 @@ from typing import Optional
 from datetime import datetime
 
 
+class ProductResponse(BaseModel):
+    id: int
+    name: str
+    category: str
+    price: int
+    description: Optional[str]
+    quantity_in_stock: int
+
+
 class ProductCreate(BaseModel):
     id: Optional[int] = None
     name: str
@@ -10,11 +19,6 @@ class ProductCreate(BaseModel):
     price: int
     description: Optional[str] = None
     quantity_in_stock: int
-
-
-class ProductResponse(ProductCreate):
-    class Config:
-        from_attributes = True
 
 
 class ProductPatch(BaseModel):
@@ -26,17 +30,20 @@ class ProductPatch(BaseModel):
     quantity_in_stock: Optional[int] = None
 
 
+class OrderResponse(BaseModel):
+    id: int
+    customer_name: str
+    order_date: datetime
+    quantity_ordered: int
+    product_id: int
+
+
 class OrderCreate(BaseModel):
     id: Optional[int] = None
     customer_name: str
     order_date: Optional[datetime] = None
     quantity_ordered: int
     product_id: int
-
-
-class OrderResponse(OrderCreate):
-    class Config:
-        from_attributes = True
 
 
 class OrderPatch(BaseModel):
