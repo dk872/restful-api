@@ -48,7 +48,7 @@ async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/product/{product_id}", response_model=ProductResponse)
-async def update_product(product_id: int, product: ProductCreate, db: Session = Depends(get_db)):
+async def update_product(product_id: int, product: ProductResponse, db: Session = Depends(get_db)):
     db_product = db.query(Product).filter(product_id == Product.id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="The product with the specified ID was not found")
@@ -103,7 +103,6 @@ async def patch_product(product_id: int, product: ProductPatch, db: Session = De
         if name_product:
             raise HTTPException(status_code=400, detail="The product with this name already exists")
 
-
     for key, value in updated_fields.items():
         setattr(db_product, key, value)
 
@@ -144,7 +143,7 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/orders/{order_id}", response_model=OrderResponse)
-async def update_order(order_id: int, order: OrderCreate, db: Session = Depends(get_db)):
+async def update_order(order_id: int, order: OrderResponse, db: Session = Depends(get_db)):
     db_order = db.query(Orders).filter(order_id == Orders.id).first()
     if db_order is None:
         raise HTTPException(status_code=404, detail="The order with the specified ID was not found")
